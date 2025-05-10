@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import './App.css'
 import ModelSelector from './components/ModelSelector'
 import ChatInterface from './components/ChatInterface'
+import EnvDebug from './components/EnvDebug'
+import ApiConnectionTest from './components/ApiConnectionTest'
 
 function App() {
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
@@ -81,6 +83,10 @@ function App() {
       <footer className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-md p-4 text-center text-sm text-gray-600 dark:text-gray-400 border-t border-gray-200 dark:border-gray-700">
         <p>Powered by <a href="https://ollama.ai" target="_blank" rel="noopener noreferrer" className="text-indigo-600 dark:text-indigo-400 hover:underline">Ollama</a> - Running models locally</p>
       </footer>
+
+      {/* Debugging tools */}
+      <EnvDebug />
+      <ApiConnectionTest />
     </div>
   )
 }

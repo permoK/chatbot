@@ -4,6 +4,9 @@ import { OllamaModelsResponse, GenerateRequest, GenerateResponse, ChatMessage } 
 // This allows configuring the API URL through environment variables in production
 const API_BASE_URL = import.meta.env.VITE_OLLAMA_API_URL || 'http://localhost:11434/api';
 
+// Log the API URL being used to help with debugging
+console.log('Using Ollama API URL:', API_BASE_URL);
+
 export const fetchModels = async (): Promise<OllamaModelsResponse> => {
   try {
     console.log(`Fetching models from: ${API_BASE_URL}/tags`);

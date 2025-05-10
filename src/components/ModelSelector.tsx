@@ -18,6 +18,23 @@ const ModelSelector = ({ onModelSelect, selectedModel }: ModelSelectorProps) => 
     const getModels = async () => {
       try {
         setLoading(true);
+
+        // First, check if the API is accessible with a simple fetch
+        const apiUrl = import.meta.env.VITE_OLLAMA_API_URL || 'http://localhost:11434/api';
+        console.log('Checking API connection to:', apiUrl);
+
+        try {
+          // Try a simple HEAD request first to check connectivity
+          const connectionCheck = await fetch(`${apiUrl.replace(/\/api$/, '')}`, {
+            method: 'HEAD',
+            mode: 'cors',
+          });
+          console.log('API connection check result:', connectionCheck.status, connectionCheck.statusText);
+        } catch (connectionErr) {
+          console.error('API connection check failed:', connectionErr);
+        }
+
+        // Now try to fetch the models
         const response = await fetchModels();
         setModels(response.models);
 
@@ -26,8 +43,9 @@ const ModelSelector = ({ onModelSelect, selectedModel }: ModelSelectorProps) => 
           onModelSelect(response.models[0].name);
         }
       } catch (err) {
-        setError('Failed to load models. Make sure Ollama is running.');
-        console.error(err);
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        setError(`Failed to load models. ${errorMessage}`);
+        console.error('Model loading error:', err);
       } finally {
         setLoading(false);
       }
@@ -69,6 +87,16 @@ const ModelSelector = ({ onModelSelect, selectedModel }: ModelSelectorProps) => 
         <p className="text-sm mt-2">
           API URL: {import.meta.env.VITE_OLLAMA_API_URL || 'http://localhost:11434/api'}
         </p>
+        <div className="mt-2 text-sm">
+          <p className="mb-1"><strong>Troubleshooting:</strong></p>
+          <ol className="list-decimal pl-5 space-y-1">
+            <li>Check if your Ollama server is running</li>
+            <li>Verify the API URL is correct in your environment variables</li>
+            <li>Make sure CORS is properly configured on your server</li>
+            <li>Check browser console for detailed error messages</li>
+            <li>Use the "Test API Connection" button at the bottom left for diagnostics</li>
+          </ol>
+        </div>
         <div className="mt-3 flex flex-col sm:flex-row gap-2">
           <button
             onClick={() => window.location.reload()}
