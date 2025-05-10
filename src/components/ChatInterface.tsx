@@ -1,32 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChatMessage } from '../types/ollama';
+import { ChatMessage, ReasoningStep } from '../types/ollama';
 import { generateChatCompletion } from '../services/ollamaService';
 import Message from './Message';
+import ReasoningToggle from './ReasoningToggle';
 
-// Function to fix duplicated words and phrases in text
+// Helper function to fix duplicated words in the response
 const fixDuplicatedWords = (text: string): string => {
-  if (!text) return text;
-
-  // Step 1: Fix simple repeated words
-  let result = text.replace(/\b(\w+)(\s+\1\b)+/gi, '$1');
-
-  // Step 2: Fix repeated word pairs (e.g., "hello there hello there")
-  result = result.replace(/\b(\w+\s+\w+)(\s+\1\b)+/gi, '$1');
-
-  // Step 3: Fix repeated phrases with punctuation
-  result = result.replace(/(\w+[.,!?;:]\s+)(\1)+/gi, '$1');
-
-  // Step 4: Fix repeated emoji or special characters
-  result = result.replace(/([\u{1F300}-\u{1F6FF}])\s*\1+/gu, '$1');
-
-  // Step 5: Fix repeated greetings like "Hello Hello"
-  const commonGreetings = ['hello', 'hi', 'hey', 'greetings'];
-  for (const greeting of commonGreetings) {
-    const regex = new RegExp(`\\b${greeting}\\b\\s+\\b${greeting}\\b`, 'gi');
-    result = result.replace(regex, greeting);
-  }
-
-  return result;
+  // Simple regex to catch repeated words with optional punctuation
+  return text.replace(/\b(\w+)\b(\s+\1\b)+/gi, '$1');
 };
 
 interface ChatInterfaceProps {
@@ -34,31 +15,41 @@ interface ChatInterfaceProps {
 }
 
 const ChatInterface = ({ selectedModel }: ChatInterfaceProps) => {
+  // State for messages
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Scroll to bottom when messages change
+  // Reasoning options
+  const [reasoning, setReasoning] = useState(false);
+  const [reasoningDepth, setReasoningDepth] = useState<'basic' | 'detailed' | 'comprehensive'>('basic');
+  const [searchEnabled, setSearchEnabled] = useState(false);
+  const [calculationEnabled, setCalculationEnabled] = useState(false);
+
+  // Refs
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, isTyping]);
 
-  // Auto-resize textarea
+  // Auto-resize textarea as user types
   useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.style.height = 'auto';
-      inputRef.current.style.height = `${inputRef.current.scrollHeight}px`;
+    const textarea = inputRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
     }
   }, [input]);
 
-  // Handle Ctrl+Enter to submit
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  // Handle key press in textarea
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit(e as any);
+      handleSubmit(e);
     }
   };
 
@@ -88,6 +79,14 @@ const ChatInterface = ({ selectedModel }: ChatInterfaceProps) => {
       // Keep track of the accumulated response for post-processing
       let accumulatedResponse = '';
 
+      // Prepare reasoning options
+      const reasoningOptions = {
+        reasoning: reasoning,
+        reasoning_depth: reasoningDepth,
+        search_enabled: searchEnabled,
+        calculation_enabled: calculationEnabled,
+      };
+
       await generateChatCompletion(
         selectedModel,
         [...messages, userMessage],
@@ -112,17 +111,38 @@ const ChatInterface = ({ selectedModel }: ChatInterfaceProps) => {
           // Final post-processing of the complete response
           const finalProcessedResponse = fixDuplicatedWords(fullResponse);
 
+          // Extract reasoning steps if enabled
+          let reasoningSteps: ReasoningStep[] = [];
+          if (reasoning) {
+            const reasoningRegex = /\[(REASONING|THINKING|SEARCH|CALCULATION|CODE|REFERENCE):\s*([\s\S]*?)\]/gi;
+            const matches = [...finalProcessedResponse.matchAll(reasoningRegex)];
+
+            if (matches.length > 0) {
+              reasoningSteps = matches.map(match => ({
+                type: match[1].toLowerCase() as 'thinking' | 'search' | 'calculation' | 'code' | 'reference',
+                content: match[2].trim()
+              }));
+            }
+          }
+
           // Update with the fully processed response
           setMessages((prev) => {
             const newMessages = [...prev];
             const lastMessage = newMessages[newMessages.length - 1];
             lastMessage.content = finalProcessedResponse;
+
+            // Add reasoning steps if available
+            if (reasoningSteps.length > 0) {
+              lastMessage.reasoning = reasoningSteps;
+            }
+
             return newMessages;
           });
 
           setIsGenerating(false);
           setTimeout(() => setIsTyping(false), 500); // Keep typing indicator a bit longer for effect
-        }
+        },
+        reasoningOptions
       );
     } catch (error) {
       console.error('Error generating chat completion:', error);
@@ -194,6 +214,16 @@ const ChatInterface = ({ selectedModel }: ChatInterfaceProps) => {
 
       <form onSubmit={handleSubmit} className="border-t border-gray-200 dark:border-gray-700 p-4 bg-white dark:bg-gray-800 shadow-lg">
         <div className="flex items-end">
+          {/* Reasoning Toggle */}
+          <div className="mr-2">
+            <ReasoningToggle
+              reasoning={reasoning}
+              setReasoning={setReasoning}
+              reasoningDepth={reasoningDepth}
+              setReasoningDepth={setReasoningDepth}
+            />
+          </div>
+
           <div className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-2xl px-4 py-3 focus-within:ring-2 focus-within:ring-indigo-500 dark:focus-within:ring-indigo-400 transition-all duration-200">
             <textarea
               ref={inputRef}
@@ -212,6 +242,7 @@ const ChatInterface = ({ selectedModel }: ChatInterfaceProps) => {
               className="w-full bg-transparent border-0 focus:ring-0 focus:outline-none resize-none max-h-32 text-gray-800 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400"
             />
           </div>
+
           <button
             type="submit"
             disabled={!selectedModel || !input.trim() || isGenerating}
@@ -237,8 +268,38 @@ const ChatInterface = ({ selectedModel }: ChatInterfaceProps) => {
             )}
           </button>
         </div>
-        <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 text-center">
-          {selectedModel ? `Chatting with ${selectedModel}` : 'Select a model to start chatting'}
+
+        <div className="mt-2 flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
+          <div>
+            {selectedModel ? `Chatting with ${selectedModel}` : 'Select a model to start chatting'}
+          </div>
+
+          {/* Additional capabilities toggles */}
+          {reasoning && (
+            <div className="flex items-center space-x-2">
+              <label className="inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={searchEnabled}
+                  onChange={(e) => setSearchEnabled(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="relative w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                <span className="ml-1 text-xs font-medium text-gray-500 dark:text-gray-400">Search</span>
+              </label>
+
+              <label className="inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={calculationEnabled}
+                  onChange={(e) => setCalculationEnabled(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="relative w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 dark:peer-focus:ring-indigo-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-indigo-600"></div>
+                <span className="ml-1 text-xs font-medium text-gray-500 dark:text-gray-400">Calc</span>
+              </label>
+            </div>
+          )}
         </div>
       </form>
     </div>

@@ -18,9 +18,31 @@ export interface OllamaModelsResponse {
   models: OllamaModel[];
 }
 
+export interface ReasoningStep {
+  type: 'thinking' | 'search' | 'calculation' | 'code' | 'reference';
+  content: string;
+  metadata?: {
+    source?: string;
+    timestamp?: string;
+    confidence?: number;
+    [key: string]: any;
+  };
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
+  reasoning?: ReasoningStep[];
+  artifacts?: {
+    type: 'image' | 'code' | 'table' | 'chart' | 'file' | 'link';
+    content: string;
+    metadata?: {
+      title?: string;
+      description?: string;
+      mimeType?: string;
+      [key: string]: any;
+    };
+  }[];
 }
 
 export interface GenerateRequest {
@@ -35,6 +57,10 @@ export interface GenerateRequest {
     repeat_penalty?: number;
     presence_penalty?: number;
     frequency_penalty?: number;
+    reasoning?: boolean;
+    reasoning_depth?: 'basic' | 'detailed' | 'comprehensive';
+    search_enabled?: boolean;
+    calculation_enabled?: boolean;
   };
 }
 
@@ -50,4 +76,10 @@ export interface GenerateResponse {
   prompt_eval_duration: number;
   eval_count: number;
   eval_duration: number;
+  reasoning?: ReasoningStep[];
+  artifacts?: {
+    type: string;
+    content: string;
+    metadata?: Record<string, any>;
+  }[];
 }
