@@ -1,55 +1,61 @@
-# React + TypeScript + Vite
+# Ollama Chat Web UI
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern web interface for chatting with your locally hosted Ollama models.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- 🚀 Modern React + TypeScript + Vite stack
+- 🎨 Clean, responsive UI with dark mode support
+- 💬 Chat with any model available in your Ollama instance
+- 🧠 Optional reasoning steps display
+- 🔍 Support for search and calculation capabilities
+- 🌐 Works with remote Ollama instances
 
-## Expanding the ESLint configuration
+## Deployment on Coolify
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+This application is designed to work with Coolify deployments. To properly configure it:
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+### 1. Environment Variables
+
+Set the following environment variable in your Coolify deployment:
+
+```
+VITE_OLLAMA_API_URL=https://your-ollama-api-url.com/api
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Replace `https://your-ollama-api-url.com/api` with the URL of your Ollama API endpoint.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### 2. CORS Configuration
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+Make sure your Ollama API server is configured to accept CORS requests from your web application domain. If you're running Ollama behind a reverse proxy like Nginx, you'll need to add appropriate CORS headers.
+
+Example Nginx configuration:
+
+```nginx
+location /api {
+    proxy_pass http://localhost:11434;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+
+    # CORS headers
+    add_header 'Access-Control-Allow-Origin' 'https://your-chat-app-domain.com';
+    add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';
+    add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range';
+    add_header 'Access-Control-Expose-Headers' 'Content-Length,Content-Range';
+
+    # Handle preflight requests
+    if ($request_method = 'OPTIONS') {
+        add_header 'Access-Control-Allow-Origin' 'https://your-chat-app-domain.com';
+        add_header 'Access-Control-Allow-Methods' 'GET, POST, OPTIONS';
+        add_header 'Access-Control-Allow-Headers' 'DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range';
+        add_header 'Access-Control-Max-Age' 1728000;
+        add_header 'Content-Type' 'text/plain; charset=utf-8';
+        add_header 'Content-Length' 0;
+        return 204;
+    }
+}
 ```
-# chatbot
+
+### 3. Allowed Hosts
+
+The application is configured to allow requests from `chatbot.cecilgachie.tech`. If you're using a different domain, update the `allowedHosts` in `vite.config.ts`.

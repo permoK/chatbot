@@ -1,16 +1,34 @@
 import { OllamaModelsResponse, GenerateRequest, GenerateResponse, ChatMessage } from '../types/ollama';
 
-const API_BASE_URL = 'http://localhost:11434/api';
+// Get the API base URL from environment variables or use a default
+// This allows configuring the API URL through environment variables in production
+const API_BASE_URL = import.meta.env.VITE_OLLAMA_API_URL || 'http://localhost:11434/api';
 
 export const fetchModels = async (): Promise<OllamaModelsResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/tags`);
+    console.log(`Fetching models from: ${API_BASE_URL}/tags`);
+    const response = await fetch(`${API_BASE_URL}/tags`, {
+      headers: {
+        'Accept': 'application/json',
+      },
+      mode: 'cors',
+    });
+
     if (!response.ok) {
-      throw new Error(`Failed to fetch models: ${response.statusText}`);
+      throw new Error(`Failed to fetch models: ${response.status} ${response.statusText}`);
     }
-    return await response.json();
+
+    const data = await response.json();
+    console.log('Models fetched successfully:', data);
+    return data;
   } catch (error) {
     console.error('Error fetching models:', error);
+
+    // Provide more detailed error information
+    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      throw new Error(`Cannot connect to Ollama API at ${API_BASE_URL}. Make sure Ollama is running and accessible.`);
+    }
+
     throw error;
   }
 };
@@ -32,17 +50,25 @@ export const generateCompletion = async (
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
+      mode: 'cors',
       body: JSON.stringify(request),
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to generate completion: ${response.statusText}`);
+      throw new Error(`Failed to generate completion: ${response.status} ${response.statusText}`);
     }
 
     return await response.json();
   } catch (error) {
     console.error('Error generating completion:', error);
+
+    // Provide more detailed error information
+    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      throw new Error(`Cannot connect to Ollama API at ${API_BASE_URL}. Make sure Ollama is running and accessible.`);
+    }
+
     throw error;
   }
 };
@@ -66,12 +92,14 @@ export const streamCompletion = async (
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
+      mode: 'cors',
       body: JSON.stringify(request),
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to stream completion: ${response.statusText}`);
+      throw new Error(`Failed to stream completion: ${response.status} ${response.statusText}`);
     }
 
     const reader = response.body?.getReader();
@@ -107,6 +135,12 @@ export const streamCompletion = async (
     }
   } catch (error) {
     console.error('Error streaming completion:', error);
+
+    // Provide more detailed error information
+    if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+      throw new Error(`Cannot connect to Ollama API at ${API_BASE_URL}. Make sure Ollama is running and accessible.`);
+    }
+
     throw error;
   }
 };

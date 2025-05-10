@@ -66,12 +66,25 @@ const ModelSelector = ({ onModelSelect, selectedModel }: ModelSelectorProps) => 
     return (
       <div className="p-4 bg-red-100 dark:bg-red-900/30 backdrop-blur-sm text-red-700 dark:text-red-300 rounded-xl shadow-lg border border-red-200 dark:border-red-800">
         <p className="font-medium">{error}</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="mt-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-300 shadow-md hover:shadow-lg"
-        >
-          Retry
-        </button>
+        <p className="text-sm mt-2">
+          API URL: {import.meta.env.VITE_OLLAMA_API_URL || 'http://localhost:11434/api'}
+        </p>
+        <div className="mt-3 flex flex-col sm:flex-row gap-2">
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all duration-300 shadow-md hover:shadow-lg"
+          >
+            Retry Connection
+          </button>
+          <a
+            href="https://github.com/ollama/ollama#api-endpoints"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-300 shadow-md hover:shadow-lg text-center"
+          >
+            Ollama API Docs
+          </a>
+        </div>
       </div>
     );
   }
