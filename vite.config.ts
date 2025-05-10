@@ -7,9 +7,11 @@ export default defineConfig({
   server: {
     host: '0.0.0.0', // Listen on all network interfaces
     port: 5173, // Default Vite port
+    allowedHosts: ['chatbot.cecilgachie.tech'], // Allow this specific host
   },
   preview: {
     host: '0.0.0.0', // Also apply to preview server
     port: 4173, // Default Vite preview port
+    allowedHosts: ['chatbot.cecilgachie.tech'], // Allow this specific host
   },
 })
